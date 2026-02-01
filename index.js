@@ -1,10 +1,19 @@
-require('dotenv').config();
-
+const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { google } = require('googleapis');
 const { Telegraf } = require('telegraf');
+
+// ------------------ LOAD ENV FILE (LOCAL DEV / LOCAL PROD SIM) ------------------
+const envFile =
+  process.env.ENV_FILE ||
+  (process.env.NODE_ENV === 'production' ? '.env.prod.local' : '.env.dev');
+
+dotenv.config({ path: envFile });
+
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const IS_PROD = NODE_ENV === 'production';
 
 // ------------------ CONFIG ------------------
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -30,9 +39,6 @@ function ensureCredsFile() {
   if (json && String(json).trim() !== '') {
     const credsPath = path.join(os.tmpdir(), 'service-account.json');
     fs.writeFileSync(credsPath, json);
-    if (!fs.existsSync(credsPath)) {
-      throw new Error(`No pude escribir credenciales en tmp: ${credsPath}`);
-    }
     return credsPath;
   }
 
@@ -49,11 +55,15 @@ function ensureCredsFile() {
 
 const CREDS_FILE = ensureCredsFile();
 
-// Diagnóstico útil (local)
-console.log('🔎 Credenciales:', CREDS_FILE);
-console.log('🔎 BOT_TOKEN existe:', Boolean(BOT_TOKEN));
-console.log('🔎 SPREADSHEET_ID existe:', Boolean(SPREADSHEET_ID));
-console.log('🔎 SHEET_NAME:', SHEET_NAME);
+// ------------------ LOGS (ONLY DEV) ------------------
+if (!IS_PROD) {
+  console.log('🧪 Modo DEV');
+  console.log('📄 Env file:', envFile);
+  console.log('🔎 Credenciales:', CREDS_FILE);
+  console.log('🔎 BOT_TOKEN existe:', Boolean(BOT_TOKEN));
+  console.log('🔎 SPREADSHEET_ID existe:', Boolean(SPREADSHEET_ID));
+  console.log('🔎 SHEET_NAME:', SHEET_NAME);
+}
 
 // ------------------ GOOGLE AUTH ------------------
 function getAuth() {

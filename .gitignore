@@ -1,3 +1,4 @@
 node_modules/
-.env
+.env.dev
+.env.prod.local
 service-account.json
