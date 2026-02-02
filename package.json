@@ -4,9 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "start": "node index.js",
-  "dev": "set NODE_ENV=development&& set ENV_FILE=.env.dev&& node index.js",
-  "prod-local": "set NODE_ENV=production&& set ENV_FILE=.env.prod.local&& node index.js"
+  "start": "node index.js"
 },
   "keywords": [],
   "author": "",

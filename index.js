@@ -18,9 +18,7 @@ function ensureCredsFile() {
   if (envPath && String(envPath).trim() !== '') {
     const abs = path.isAbsolute(envPath) ? envPath : path.resolve(process.cwd(), envPath);
     if (!fs.existsSync(abs)) {
-      throw new Error(
-        `GOOGLE_APPLICATION_CREDENTIALS apunta a un archivo que no existe:\n${abs}`
-      );
+      throw new Error(`GOOGLE_APPLICATION_CREDENTIALS apunta a un archivo que no existe:\n${abs}`);
     }
     return abs;
   }
@@ -30,9 +28,6 @@ function ensureCredsFile() {
   if (json && String(json).trim() !== '') {
     const credsPath = path.join(os.tmpdir(), 'service-account.json');
     fs.writeFileSync(credsPath, json);
-    if (!fs.existsSync(credsPath)) {
-      throw new Error(`No pude escribir credenciales en tmp: ${credsPath}`);
-    }
     return credsPath;
   }
 
@@ -48,12 +43,6 @@ function ensureCredsFile() {
 }
 
 const CREDS_FILE = ensureCredsFile();
-
-// Diagnóstico útil (local)
-console.log('🔎 Credenciales:', CREDS_FILE);
-console.log('🔎 BOT_TOKEN existe:', Boolean(BOT_TOKEN));
-console.log('🔎 SPREADSHEET_ID existe:', Boolean(SPREADSHEET_ID));
-console.log('🔎 SHEET_NAME:', SHEET_NAME);
 
 // ------------------ GOOGLE AUTH ------------------
 function getAuth() {
@@ -87,7 +76,7 @@ async function guardarCompra({ monto, meses, banco, descripcion, titular }) {
     monto,               // E
     '',                  // F (formula)
     meses,               // G
-    banco.toUpperCase(), // H siempre en mayúsculas
+    banco.toUpperCase(), // H
   ];
 
   await sheets.spreadsheets.values.append({
@@ -118,19 +107,27 @@ bot.start((ctx) => {
   );
 });
 
-bot.command('compra', async (ctx) => {
+// Acepta: /compra, /Compra, /COMPRA, /compra@TuBot (cualquier mayúscula/minúscula)
+bot.hears(/^\/compra(@\w+)?\b/i, async (ctx) => {
   try {
-    const texto = ctx.message.text;
-    const partes = texto.split(' ');
+    const texto = (ctx.message?.text || '').trim();
+    console.log('📩 Texto recibido:', texto);
 
-    if (partes.length < 5) {
-      return ctx.reply('❌ Formato incorrecto:\n/compra 9000 12 RAPPICARD Descripción');
+    // Quita el comando (/compra o /compra@bot) y deja solo argumentos
+    const argsText = texto.replace(/^\/compra(@\w+)?\s*/i, '').trim();
+
+    // Separamos por espacios, pero conservando descripción con espacios
+    const partes = argsText.split(' ').filter(Boolean);
+
+    // Formato: monto meses banco descripcion...
+    if (partes.length < 4) {
+      return ctx.reply('❌ Formato incorrecto:\n/compra <monto> <meses> <banco> <descripción>\nEj: /compra 9000 12 rappicard Pantalla Samsung 85');
     }
 
-    const monto = Number(partes[1]);
-    const meses = Number(partes[2]);
-    const banco = String(partes[3] || '').trim().toUpperCase();
-    const descripcion = partes.slice(4).join(' ').trim();
+    const monto = Number(partes[0]);
+    const meses = Number(partes[1]);
+    const banco = String(partes[2] || '').trim().toUpperCase();
+    const descripcion = partes.slice(3).join(' ').trim();
 
     if (Number.isNaN(monto) || Number.isNaN(meses)) {
       return ctx.reply('❌ Monto y meses deben ser números');
@@ -143,7 +140,7 @@ bot.command('compra', async (ctx) => {
 
     await guardarCompra({ monto, meses, banco, descripcion, titular });
 
-    ctx.reply(
+    return ctx.reply(
       `✅ Compra guardada\n\n` +
       `🛒 ${descripcion}\n` +
       `🏷️ ${banco}\n` +
@@ -153,9 +150,10 @@ bot.command('compra', async (ctx) => {
     );
   } catch (err) {
     console.error('❌ Error:', err);
-    ctx.reply('❌ Error guardando la compra (revisa consola)');
+    return ctx.reply('❌ Error guardando la compra (revisa consola)');
   }
 });
+
 
 bot.launch();
 console.log('🚀 Bot iniciado correctamente');
