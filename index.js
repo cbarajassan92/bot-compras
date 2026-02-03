@@ -149,7 +149,30 @@ function parseCompraCommand(text) {
 
   return { amount, months, bank, description };
 }
+// ============================================================
+// Railway/Linux: crear /tmp/service-account.json desde ENV
+// (Debe correr ANTES de getSheetsClient())
+// ============================================================
+try {
+  const credsPath = GOOGLE_APPLICATION_CREDENTIALS; // /tmp/service-account.json
+  const credsJson =
+    process.env.GOOGLE_CREDENTIALS_JSON || process.env.GOOGLE_SA_JSON;
 
+  // Log seguro (no imprime secretos)
+  console.log("🔎 ENV creds JSON existe:", Boolean(credsJson));
+  console.log("🔎 Archivo creds existe:", fs.existsSync(credsPath));
+
+  // Si tenemos JSON y aún no existe el archivo, lo escribimos
+  if (credsJson && !fs.existsSync(credsPath)) {
+    fs.writeFileSync(credsPath, credsJson, { encoding: "utf8" });
+    console.log("✅ Credenciales escritas en:", credsPath);
+  }
+
+  // Si existe el archivo, confirmamos
+  console.log("🔎 Archivo creds existe (post):", fs.existsSync(credsPath));
+} catch (e) {
+  console.error("❌ Error escribiendo credenciales:", e.message);
+}
 /* ============================================================
  * GOOGLE SHEETS CLIENT
  * ============================================================
