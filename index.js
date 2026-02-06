@@ -302,6 +302,47 @@ function rankCardsByDaysToPay(today = new Date(), excludeBanks = []) {
 }
 
 /* ============================================================
+ * RAILWAY: CREAR service-account.json DESDE ENV (si aplica)
+ * ============================================================
+ *
+ * En producción (Railway/Linux) no existe el archivo físico
+ * service-account.json a menos que lo generemos.
+ *
+ * Estrategia:
+ * - Si existe la variable GOOGLE_SA_JSON:
+ *   - La parseamos (para validar)
+ *   - Corregimos saltos de línea del private_key si vienen escapados
+ *   - Escribimos el archivo en /tmp/service-account.json
+ *
+ * Esto permite seguir usando GoogleAuth({ keyFile: ... })
+ * sin cambiar el resto del código.
+ */
+function ensureServiceAccountFile() {
+  // Solo tiene sentido en Linux/containers, pero no daña en Windows.
+  const raw = process.env.GOOGLE_SA_JSON;
+  if (!raw) return;
+
+  try {
+    const parsed = JSON.parse(raw);
+
+    // Fix típico: private_key viene con "\\n" en vez de "\n"
+    if (parsed.private_key && typeof parsed.private_key === "string") {
+      parsed.private_key = parsed.private_key.replace(/\\n/g, "\n");
+    }
+
+    // Creamos /tmp si hiciera falta (normalmente ya existe)
+    fs.writeFileSync(GOOGLE_APPLICATION_CREDENTIALS, JSON.stringify(parsed, null, 2));
+    console.log("✅ Credenciales escritas en:", GOOGLE_APPLICATION_CREDENTIALS);
+  } catch (e) {
+    console.error("❌ GOOGLE_SA_JSON inválido:", e.message);
+  }
+}
+
+// Ejecutamos antes de inicializar Google Sheets
+ensureServiceAccountFile();
+
+
+/* ============================================================
  * GOOGLE SHEETS CLIENT
  * ============================================================
  */
